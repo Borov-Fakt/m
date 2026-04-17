@@ -1,0 +1,638 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+main/java/com/example/fitnes/HelloApplication.java
+main/java/com/example/fitnes/HelloController.java
+main/java/fitnesDB/Client.java
+main/java/fitnesDB/DataBase.java
+main/java/fitnesDB/enums/FitnessZone.java
+main/java/fitnesDB/enums/Gender.java
+main/java/fitnesDB/enums/TypeSubscription.java
+main/java/fitnesDB/Fitness.java
+main/java/fitnesDB/Subscription.java
+main/java/module-info.java
+main/resources/com/example/fitnes/main-view.fxml
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="main/java/com/example/fitnes/HelloApplication.java">
+package com.example.fitnes;
+
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+import java.io.IOException;
+
+public class HelloApplication extends Application {
+    @Override
+    public void start(Stage stage) throws IOException {
+        FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("main-view.fxml"));
+        Scene scene = new Scene(fxmlLoader.load(), 800, 600);
+        stage.setTitle("Система управления Фитнес-Клубом");
+        stage.setScene(scene);
+        stage.show();
+    }
+}
+</file>
+
+<file path="main/java/com/example/fitnes/HelloController.java">
+package com.example.fitnes;
+
+import fitnesDB.DataBase;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+
+public class HelloController {
+    private final DataBase db = new DataBase();
+    private String role;
+    private int clientId;
+    private String uName;
+
+    @FXML private HBox loginPane;
+    @FXML private TextField loginField, passwordField;
+    @FXML private Label statusLabel;
+    @FXML private TabPane mainTabPane;
+
+    @FXML private Tab adminTab, trainerTab, clientTab;
+
+    @FXML private TextField fNameF, lNameF, yearF, contactF, regLoginF, regPassF;
+    @FXML private ComboBox<String> genderBox, roleBox;
+    @FXML private TextArea allUsersArea, reportArea;
+
+    @FXML private TextField targetClientId, exName, exSets, exReps, schedTime;
+    @FXML private DatePicker schedDate;
+    @FXML private TextArea trainerClientsArea;
+
+    @FXML private Label clientWelcome;
+    @FXML private TextArea clientPlanArea, clientSchedArea;
+
+    @FXML
+    protected void handleLogin() {
+        String[] data = db.checkLogin(loginField.getText(), passwordField.getText());
+        if (data != null) {
+            role = data[0];
+            clientId = Integer.parseInt(data[1]);
+            uName = data[2];
+
+            loginPane.setVisible(false);
+            loginPane.setManaged(false);
+            mainTabPane.setVisible(true);
+            mainTabPane.setManaged(true);
+            statusLabel.setText("Вы вошли как: " + uName);
+
+            adminTab.setDisable(!role.equals("ADMIN"));
+            trainerTab.setDisable(role.equals("CLIENT"));
+            clientTab.setDisable(!role.equals("CLIENT"));
+
+            refreshUserLists();
+        } else {
+            statusLabel.setText("Ошибка входа!");
+        }
+    }
+
+    @FXML
+    protected void refreshUserLists() {
+        allUsersArea.setText(db.getPeopleList("ADMIN"));
+        trainerClientsArea.setText(db.getPeopleList("TRAINER"));
+
+        if (role != null && role.equals("CLIENT")) {
+            clientPlanArea.setText(db.getClientDataText(clientId, "training_plans"));
+            clientSchedArea.setText(db.getClientDataText(clientId, "schedules"));
+            clientWelcome.setText("Личный кабинет: " + uName);
+        }
+    }
+
+    @FXML
+    protected void handleRegisterAnyUser() {
+        try {
+            int year = yearF.getText().isEmpty() ? 0 : Integer.parseInt(yearF.getText());
+            db.registerAnyUser(
+                    fNameF.getText(), lNameF.getText(), year,
+                    genderBox.getValue(), contactF.getText(),
+                    roleBox.getValue(), regLoginF.getText(), regPassF.getText()
+            );
+            statusLabel.setText("Создан пользователь: " + regLoginF.getText());
+            refreshUserLists();
+        } catch (Exception e) {
+            statusLabel.setText("Ошибка заполнения данных!");
+        }
+    }
+
+    @FXML
+    protected void handleAddTrainingPlan() {
+        try {
+            db.addTrainingPlan(
+                    Integer.parseInt(targetClientId.getText()),
+                    exName.getText(),
+                    Integer.parseInt(exSets.getText()),
+                    Integer.parseInt(exReps.getText())
+            );
+            statusLabel.setText("План для ID " + targetClientId.getText() + " обновлен.");
+        } catch (Exception e) {
+            statusLabel.setText("Ошибка: Проверьте ID и числа!");
+        }
+    }
+
+    @FXML
+    protected void handleAddSchedule() {
+        try {
+            db.addSchedule(
+                    Integer.parseInt(targetClientId.getText()),
+                    uName,
+                    schedDate.getValue().toString(),
+                    schedTime.getText()
+            );
+            statusLabel.setText("Занятие добавлено в расписание.");
+        } catch (Exception e) {
+            statusLabel.setText("Ошибка: Проверьте дату и время!");
+        }
+    }
+
+    @FXML
+    protected void handleShowAttendanceReport() {
+        reportArea.setText(db.getAttendanceReport());
+    }
+
+    @FXML
+    protected void refreshClientView() {
+        refreshUserLists();
+    }
+}
+</file>
+
+<file path="main/java/fitnesDB/Client.java">
+package fitnesDB;
+
+import fitnesDB.enums.Gender;
+
+public class Client {
+    private int id;
+    private String firstName;
+    private String lastName;
+    private int birthYear;
+    private Gender gender;
+    private int balance;
+    private String contactInfo;
+
+    public Client(int id, String firstName, String lastName, int birthYear, Gender gender, int balance, String contactInfo) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.birthYear = birthYear;
+        this.gender = gender;
+        this.balance = balance;
+        this.contactInfo = contactInfo;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public int getBalance() {
+        return balance;
+    }
+
+    public String getContactInfo() {
+        return contactInfo;
+    }
+
+    public String toString() {
+        return "ID: " + id + " | " + firstName + " " + lastName + " | Год: " + birthYear + " | Пол: " + gender + " | Баланс: " + balance + " | Контакты: " + contactInfo;
+    }
+}
+</file>
+
+<file path="main/java/fitnesDB/DataBase.java">
+package fitnesDB;
+
+import java.sql.*;
+
+public class DataBase {
+    private final String host = "localhost";
+    private final String port = "5432";
+    private final String dbName = "fitness_db";
+    private final String login = "postgres";
+    private final String password = "1234";
+
+    private Connection getDbConnection() throws ClassNotFoundException, SQLException {
+        String str = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+        Class.forName("org.postgresql.Driver");
+        return DriverManager.getConnection(str, login, password);
+    }
+
+    public String[] checkLogin(String log, String pass) {
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            ResultSet res = statement.executeQuery("SELECT * FROM users WHERE login = '" + log + "' AND password = '" + pass + "'");
+            if (res.next()) {
+                return new String[]{res.getString("role"), String.valueOf(res.getInt("client_id")), res.getString("first_name")};
+            }
+        } catch (Exception e) {
+            System.out.println("Ошибка входа: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public void registerAnyUser(String fName, String lName, int year, String gender, String contacts, String role, String log, String pass) {
+        Connection conn = null;
+        try {
+            conn = getDbConnection();
+            conn.setAutoCommit(false);
+            Statement statement = conn.createStatement();
+
+            String clientIdStr = "NULL";
+            if (role.equals("CLIENT")) {
+                String sqlClient = "INSERT INTO clients (first_name, last_name, birth_year, gender, contact_info) " +
+                        "VALUES ('" + fName + "', '" + lName + "', " + year + ", '" + gender + "', '" + contacts + "') RETURNING id";
+                ResultSet res = statement.executeQuery(sqlClient);
+                if (res.next()) clientIdStr = String.valueOf(res.getInt("id"));
+            }
+
+            String sqlUser = "INSERT INTO users (login, password, role, client_id, first_name, last_name) " +
+                    "VALUES ('" + log + "', '" + pass + "', '" + role + "', " + clientIdStr + ", '" + fName + "', '" + lName + "')";
+            statement.executeUpdate(sqlUser);
+
+            conn.commit();
+        } catch (Exception e) {
+            System.out.println("Ошибка регистрации: " + e.getMessage());
+            try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+        }
+    }
+
+    public void addTrainingPlan(int clientId, String ex, int sets, int reps) {
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            String sql = "INSERT INTO training_plans (client_id, exercise, sets, reps) VALUES (" + clientId + ", '" + ex + "', " + sets + ", " + reps + ")";
+            statement.executeUpdate(sql);
+        } catch (Exception e) {
+            System.out.println("Ошибка плана: " + e.getMessage());
+        }
+    }
+
+    public void addSchedule(int clientId, String trainer, String date, String time) {
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            String sql = "INSERT INTO schedules (client_id, trainer_name, train_date, train_time) VALUES (" + clientId + ", '" + trainer + "', '" + date + "', '" + time + "')";
+            statement.executeUpdate(sql);
+        } catch (Exception e) {
+            System.out.println("Ошибка расписания: " + e.getMessage());
+        }
+    }
+
+    public void recordAttendance(int clientId, String zone) {
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            String sql = "INSERT INTO attendance (client_id, visit_date, zone) VALUES (" + clientId + ", CURRENT_DATE, '" + zone + "')";
+            statement.executeUpdate(sql);
+        } catch (Exception e) {
+            System.out.println("Ошибка посещения: " + e.getMessage());
+        }
+    }
+
+    public String getAttendanceReport() {
+        StringBuilder sb = new StringBuilder();
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            ResultSet res = statement.executeQuery("SELECT u.first_name, a.visit_date, a.zone FROM attendance a JOIN users u ON a.client_id = u.client_id");
+            while (res.next()) {
+                sb.append(res.getString("first_name")).append(" | ").append(res.getDate("visit_date")).append(" | ").append(res.getString("zone")).append("\n");
+            }
+        } catch (Exception e) {
+            System.out.println("Ошибка отчета: " + e.getMessage());
+        }
+        return sb.toString();
+    }
+
+    public String getPeopleList(String role) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            String sql = role.equals("ADMIN") ? "SELECT * FROM users" : "SELECT * FROM users WHERE role = 'CLIENT'";
+            ResultSet res = statement.executeQuery(sql);
+            sb.append("ID | Логин | Роль | Имя\n");
+            while (res.next()) {
+                int id = res.getString("role").equals("CLIENT") ? res.getInt("client_id") : res.getInt("id");
+                sb.append(id).append(" | ").append(res.getString("login")).append(" | ").append(res.getString("role")).append(" | ").append(res.getString("first_name")).append("\n");
+            }
+        } catch (Exception e) {
+            System.out.println("Ошибка списка: " + e.getMessage());
+        }
+        return sb.toString();
+    }
+
+    public String getClientDataText(int clientId, String table) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            Connection conn = getDbConnection();
+            Statement statement = conn.createStatement();
+            ResultSet res = statement.executeQuery("SELECT * FROM " + table + " WHERE client_id = " + clientId);
+            while (res.next()) {
+                if (table.equals("training_plans"))
+                    sb.append(res.getString("exercise")).append(": ").append(res.getInt("sets")).append("x").append(res.getInt("reps")).append("\n");
+                else
+                    sb.append(res.getDate("train_date")).append(" в ").append(res.getTime("train_time")).append("\n");
+            }
+        } catch (Exception e) {
+            System.out.println("Ошибка данных клиента: " + e.getMessage());
+        }
+        return sb.toString();
+    }
+}
+</file>
+
+<file path="main/java/fitnesDB/enums/FitnessZone.java">
+package fitnesDB.enums;
+
+public enum FitnessZone {
+    GYM, GROUP_EXERCISE, SWIMPOOL;
+}
+</file>
+
+<file path="main/java/fitnesDB/enums/Gender.java">
+package fitnesDB.enums;
+
+public enum Gender {
+    FEMALE, MALE;
+}
+</file>
+
+<file path="main/java/fitnesDB/enums/TypeSubscription.java">
+package fitnesDB.enums;
+
+public enum TypeSubscription {
+    DAYTIME, FULLTIME, ONETIME;
+}
+</file>
+
+<file path="main/java/fitnesDB/Fitness.java">
+package fitnesDB;
+
+import fitnesDB.enums.FitnessZone;
+import fitnesDB.enums.TypeSubscription;
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+public class Fitness {
+    private Subscription[] gymMembers = new Subscription[20];
+    private Subscription[] poolMembers = new Subscription[20];
+    private Subscription[] groupMembers = new Subscription[20];
+
+    public void processSubscription(Subscription sub, FitnessZone zone) {
+        if (sub.getExpirationDate().isBefore(LocalDate.now())) {
+            System.out.println("Доступ запрещен: Срок действия истек.");
+            return;
+        }
+
+        LocalTime now = LocalTime.now();
+        boolean isZoneAllowed = false;
+        boolean isTimeAllowed = false;
+
+        if (sub.getType() == TypeSubscription.ONETIME) {
+            if (zone == FitnessZone.GYM || zone == FitnessZone.SWIMPOOL) isZoneAllowed = true;
+            if (now.isAfter(LocalTime.of(8, 0)) && now.isBefore(LocalTime.of(22, 0))) isTimeAllowed = true;
+        } else if (sub.getType() == TypeSubscription.DAYTIME) {
+            if (zone == FitnessZone.GYM || zone == FitnessZone.GROUP_EXERCISE) isZoneAllowed = true;
+            if (now.isAfter(LocalTime.of(8, 0)) && now.isBefore(LocalTime.of(16, 0))) isTimeAllowed = true;
+        } else if (sub.getType() == TypeSubscription.FULLTIME) {
+            isZoneAllowed = true;
+            if (now.isAfter(LocalTime.of(8, 0)) && now.isBefore(LocalTime.of(22, 0))) isTimeAllowed = true;
+        }
+
+        if (!isZoneAllowed || !isTimeAllowed) {
+            System.out.println("Доступ запрещен: Проверьте зону и время.");
+            return;
+        }
+
+        Subscription[] targetArray = (zone == FitnessZone.SWIMPOOL) ? poolMembers : (zone == FitnessZone.GROUP_EXERCISE) ? groupMembers : gymMembers;
+
+        for (int i = 0; i < 20; i++) {
+            if (targetArray[i] != null && targetArray[i].getOwner().getId() == sub.getOwner().getId()) {
+                System.out.println("Вы уже внутри.");
+                return;
+            }
+        }
+
+        for (int i = 0; i < 20; i++) {
+            if (targetArray[i] == null) {
+                targetArray[i] = sub;
+                System.out.println("Успех: " + sub.getOwner().getFullName() + " вошел в " + zone);
+
+                DataBase db = new DataBase();
+                db.recordAttendance(sub.getOwner().getId(), zone.toString());
+                return;
+            }
+        }
+        System.out.println("Нет мест.");
+    }
+}
+</file>
+
+<file path="main/java/fitnesDB/Subscription.java">
+package fitnesDB;
+
+import fitnesDB.enums.TypeSubscription;
+import java.time.LocalDate;
+
+public class Subscription {
+    private int id;
+    private Client owner;
+    private TypeSubscription type;
+    private LocalDate registrationDate;
+    private LocalDate expirationDate;
+
+    public Subscription(int id, Client owner, TypeSubscription type, LocalDate regDate, LocalDate expDate) {
+        this.id = id;
+        this.owner = owner;
+        this.type = type;
+        this.registrationDate = regDate;
+        this.expirationDate = expDate;
+    }
+
+    public Client getOwner() {
+        return owner;
+    }
+
+    public TypeSubscription getType() {
+        return type;
+    }
+
+    public LocalDate getExpirationDate() {
+        return expirationDate;
+    }
+
+    public String toString() {
+        return "Абонемент: " + type + " | Действует до: " + expirationDate;
+    }
+}
+</file>
+
+<file path="main/java/module-info.java">
+module com.example.fitnes {
+    requires javafx.controls;
+    requires javafx.fxml;
+    requires javafx.web;
+    requires java.sql;
+
+    requires org.controlsfx.controls;
+    requires com.dlsc.formsfx;
+    requires net.synedra.validatorfx;
+    requires org.kordamp.ikonli.javafx;
+    requires org.kordamp.bootstrapfx.core;
+    requires eu.hansolo.tilesfx;
+    requires com.almasb.fxgl.all;
+
+    opens com.example.fitnes to javafx.fxml;
+    exports com.example.fitnes;
+    exports fitnesDB;
+    opens fitnesDB to javafx.fxml;
+}
+</file>
+
+<file path="main/resources/com/example/fitnes/main-view.fxml">
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+
+<VBox spacing="10" alignment="CENTER" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.fitnes.HelloController">
+    <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+
+    <HBox fx:id="loginPane" spacing="10" alignment="CENTER">
+        <TextField fx:id="loginField" promptText="Логин"/>
+        <PasswordField fx:id="passwordField" promptText="Пароль"/>
+        <Button text="Войти" onAction="#handleLogin"/>
+    </HBox>
+
+    <Label fx:id="statusLabel" text="Вход в систему" style="-fx-font-weight: bold;"/>
+
+    <TabPane fx:id="mainTabPane" visible="false" managed="false" VBox.vgrow="ALWAYS">
+
+        <Tab text="Управление пользователями" fx:id="adminTab">
+            <VBox spacing="10">
+                <Label text="Регистрация (Сотрудник или Клиент)" style="-fx-font-weight: bold;"/>
+                <GridPane hgap="10" vgap="5">
+                    <TextField fx:id="fNameF" promptText="Имя" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="lNameF" promptText="Фамилия" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <TextField fx:id="yearF" promptText="Год рождения (только для кл.)" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="contactF" promptText="Контакты" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                    <ComboBox fx:id="genderBox" promptText="Пол" GridPane.rowIndex="2" GridPane.columnIndex="0">
+                        <items><FXCollections fx:factory="observableArrayList">
+                            <String fx:value="MALE"/><String fx:value="FEMALE"/>
+                        </FXCollections></items>
+                    </ComboBox>
+
+                    <ComboBox fx:id="roleBox" promptText="Роль" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                        <items><FXCollections fx:factory="observableArrayList">
+                            <String fx:value="ADMIN"/><String fx:value="TRAINER"/><String fx:value="CLIENT"/>
+                        </FXCollections></items>
+                    </ComboBox>
+
+                    <TextField fx:id="regLoginF" promptText="Логин" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <TextField fx:id="regPassF" promptText="Пароль" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                </GridPane>
+                <Button text="Зарегистрировать в базе" onAction="#handleRegisterAnyUser" maxWidth="Infinity"/>
+                <Separator/>
+                <Button text="Обновить список всех" onAction="#refreshUserLists"/>
+                <TextArea fx:id="allUsersArea" prefHeight="150" editable="false" style="-fx-font-family: 'Monospaced';"/>
+                <Button text="Отчет по посещаемости" onAction="#handleShowAttendanceReport"/>
+                <TextArea fx:id="reportArea" prefHeight="100" editable="false"/>
+            </VBox>
+        </Tab>
+
+        <Tab text="Работа тренера" fx:id="trainerTab">
+            <VBox spacing="10">
+                <Label text="Назначение тренировки" style="-fx-font-weight: bold;"/>
+                <HBox spacing="5">
+                    <TextField fx:id="targetClientId" promptText="ID Кл." prefWidth="50"/>
+                    <TextField fx:id="exName" promptText="Упражнение"/>
+                    <TextField fx:id="exSets" promptText="Подх." prefWidth="50"/>
+                    <TextField fx:id="exReps" promptText="Повт." prefWidth="50"/>
+                    <Button text="В план" onAction="#handleAddTrainingPlan"/>
+                </HBox>
+                <HBox spacing="5">
+                    <DatePicker fx:id="schedDate" prefWidth="120"/>
+                    <TextField fx:id="schedTime" promptText="14:00" prefWidth="60"/>
+                    <Button text="В расписание" onAction="#handleAddSchedule"/>
+                </HBox>
+                <Label text="Список клиентов для работы:"/>
+                <TextArea fx:id="trainerClientsArea" prefHeight="200" editable="false" style="-fx-font-family: 'Monospaced';"/>
+            </VBox>
+        </Tab>
+
+        <Tab text="Мой профиль" fx:id="clientTab">
+            <VBox spacing="10">
+                <Label fx:id="clientWelcome" text="Добро пожаловать!" style="-fx-font-size: 16;"/>
+                <TitledPane text="Мой тренировочный план">
+                    <TextArea fx:id="clientPlanArea" prefHeight="150" editable="false"/>
+                </TitledPane>
+                <TitledPane text="Мое расписание">
+                    <TextArea fx:id="clientSchedArea" prefHeight="100" editable="false"/>
+                </TitledPane>
+                <Button text="Обновить данные" onAction="#refreshClientView" maxWidth="Infinity"/>
+            </VBox>
+        </Tab>
+    </TabPane>
+</VBox>
+</file>
+
+</files>
